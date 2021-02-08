@@ -1,0 +1,27 @@
+# Common temp files
+.DS_Store
+.vscode/
+*.iml
+.idea
+*.pyc
+*.pickle
+*.swp
+*.swo
+.bsp
+
+# Bazel related
+bazel-*
+
+# Scala generated files
+**/project/project
+**/target
+**/.dotty-ide.json
+**/.dotty-ide-artifact
+*.class
+**/.metals
+**/.bloop
+**/_site
+
+# Emacs tmp files
+*~
+\#*#

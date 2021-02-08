@@ -1,0 +1,89 @@
+delimiters "<", ">"
+
+componentDecl(name, varDecl, assertions, transitions) ::= <<
+class <name> extends Component {
+  <varDecl>
+  <assertions>
+  <transitions>
+}
+>>
+
+inFlowDecls(names, types) ::= <<
+<if(names && types)>
+val <first(names)> = InFlow[<first(types)>]
+<inFlowDecls(rest(names), rest(types))>
+<endif>
+>>
+
+outFlowDecls(names, types) ::= <<
+<if(names && types)>
+val <first(names)> = OutFlow[<first(types)>]
+<outFlowDecls(rest(names), rest(types))>
+<endif>
+>>
+
+stateDecls(names, types, initValues) ::= <<
+<if(names && types && initValues)>
+val <first(names)> = State[<first(types)>](<first(initValues)>)
+<stateDecls(rest(names), rest(types), rest(initValues))>
+<endif>
+>>
+
+varDecls(inFlowNames, inFlowTypes, outFlowNames, outFlowTypes, stateNames, stateTypes, stateInits) ::= <<
+<inFlowDecls(inFlowNames, inFlowTypes)>
+<outFlowDecls(outFlowNames, outFlowTypes)>
+<stateDecls(stateNames, stateTypes, stateInits)>
+>>
+
+eventDecl(name, distribution, weight, policy) ::= <<
+val <name> = Event(<if(distribution)><distribution><endif><if(weight)>, <weight><endif><if(policy)>, <policy><endif>)
+>>
+
+assertions(leftList, rightList) ::= <<
+<if(leftList && rightList)>
+<first(leftList)> := <first(rightList)>
+<assertions(rest(leftList), rest(rightList))> <endif> >>
+
+assertionsWrap(leftList, rightList) ::= <<
+assertions{
+  <assertions(leftList, rightList)>
+}
+>>
+
+transition(event, guard, assertions) ::= <<
+When(<event>) If <guard> Then {
+  <assertions>
+}
+>>
+
+
+model(name, inFlowNames, inFlowTypes, outFlowNames, outFlowTypes, stateNames, stateTypes, stateInits, assertionsLeft, assertionsRight, transitions) ::= <<
+<componentDecl(name, varDecls(inFlowNames, inFlowTypes, outFlowNames, outFlowTypes, stateNames, stateTypes, stateInits), assertionsWrap(assertionsLeft, assertionsRight), transitions)>
+>>
+
+mainClass(name, content) ::= <<
+object <name> extends App{
+  <content>
+}
+>>
+
+keyValues(flowNames, flowDeps) ::= <<
+("<first(flowNames)>", Set(<first(flowDeps)>))<if(rest(flowNames) && rest(flowDeps))>, <keyValues(rest(flowNames), rest(flowDeps))><endif>
+>>
+
+printCausalCheck(modelName, className, flowNames, flowDeps) ::= <<
+val <modelName> = <className>()
+val causal<modelName> = compCheck(<modelName>)
+val flowDepsMap = Map[String, Set[String]](<keyValues(flowNames, flowDeps)>)
+import CausalityTests._
+causal<modelName> match
+  case Right(cm) => 
+    val topoOrder = cm.flowDef.map(_.l.name) 
+    println(checkTopo(topoOrder, flowDepsMap))
+  case Left(err) => 
+    println(checkErrors(err, flowDepsMap))
+>>
+
+causalMainTest(mainName, className, modelName, flowNames, flowDeps) ::= <<
+<mainClass(mainName, printCausalCheck(modelName, className, flowNames, flowDeps))>
+>>
